@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>아하 (A-HA!) - 송지우의 세계평화 프로젝트</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Jua, Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            user-select: none;
+            overflow: hidden;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+
+        /* 펄스 애니메이션 및 빛 효과 */
+        @keyframes heroGlow {
+            0%, 100% { filter: drop-shadow(0 0 15px rgba(234, 179, 8, 0.8)) drop-shadow(0 0 30px rgba(239, 68, 68, 0.6)); }
+            50% { filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.9)) drop-shadow(0 0 50px rgba(234, 179, 8, 1)); }
+        }
+        .hero-glow {
+            animation: heroGlow 2s infinite ease-in-out;
+        }
+
+        @keyframes floatEffect {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .floating {
+            animation: floatEffect 3s infinite ease-in-out;
+        }
+
+        @keyframes pulseScale {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        .pulse-btn {
+            animation: pulseScale 1.2s infinite ease-in-out;
+        }
+
+        /* 텍스트 팝업 애니메이션 */
+        .damage-pop {
+            position: absolute;
+            animation: floatUpFade 1s forwards ease-out;
+            font-weight: 900;
+            pointer-events: none;
+            z-index: 50;
+        }
+        @keyframes floatUpFade {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-50px) scale(1.4); }
+        }
+
+        /* 캔버스 배경 그림자 */
+        #gameCanvas {
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border-radius: 1rem;
+        }
+
+        /* 게임 오버 멸망 폭발 애니메이션 */
+        @keyframes explosionBoom {
+            0% { transform: scale(0.3) rotate(-5deg); opacity: 0; filter: brightness(3); }
+            50% { transform: scale(1.08) rotate(2deg); opacity: 1; filter: brightness(1.5); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; filter: brightness(1); }
+        }
+        .explosion-anim {
+            animation: explosionBoom 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes screenFlash {
+            0% { opacity: 1; background-color: #ff0000; }
+            50% { opacity: 0.8; background-color: #ff6600; }
+            100% { opacity: 0; }
+        }
+        .flash-effect {
+            animation: screenFlash 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center relative select-none">
+
+    <!-- Top UI / Header -->
+    <header class="w-full max-w-5xl px-4 py-3 flex justify-between items-center z-20 bg-slate-900/90 backdrop-blur-md rounded-b-2xl border-b border-slate-700/50">
+        <div class="flex items-center space-x-3">
+            <span class="text-2xl sm:text-3xl font-jua text-yellow-400 tracking-wider">⚡ 아하 (A-HA!)</span>
+            <span class="text-xs px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold hidden sm:inline-block">미래산업과학고 2-5 (7번)</span>
+        </div>
+        <div class="flex items-center space-x-4 sm:space-x-6 text-xs sm:text-base">
+            <div>
+                <span class="text-slate-400">주인공:</span>
+                <span id="playerTitle" class="font-bold text-cyan-300">송지우 (2-5 7번)</span>
+            </div>
+            <div>
+                <span class="text-slate-400">체력:</span>
+                <span id="playerHpDisplay" class="font-jua text-base sm:text-xl text-red-500 tracking-widest ml-1">❤️❤️❤️</span>
+            </div>
+            <div>
+                <span class="text-slate-400">지구 정화율:</span>
+                <span id="peaceScore" class="font-jua text-xl sm:text-2xl text-emerald-400 ml-1">0%</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game View Container -->
+    <main class="flex-1 w-full max-w-5xl p-2 sm:p-4 flex flex-col items-center justify-center relative z-10 overflow-hidden">
+        
+        <!-- PHASE 1: 평범한 학교 교실 화면 -->
+        <div id="classroomScene" class="w-full h-full max-h-[600px] bg-gradient-to-b from-amber-100 to-orange-200 rounded-2xl relative overflow-hidden flex flex-col items-center justify-center border-4 border-amber-800/40 shadow-2xl transition-all duration-700">
+            <!-- 교실 칠판 -->
+            <div class="absolute top-4 left-6 bg-green-800 text-white font-jua text-base sm:text-xl px-6 py-2 rounded-lg border-4 border-yellow-900 shadow-md">
+                미래산업과학고등학교 2학년 5반 교실 칠판 
+                <span class="block text-xs font-sans text-green-200 font-normal">"7번 지우야, 세계를 구하기엔 너무 평범한 날씨지?"</span>
+            </div>
+            
+            <div class="absolute bottom-0 w-full h-1/3 bg-amber-800/20 border-t-2 border-amber-900/30"></div>
+            
+            <!-- 창문 밖 망해가는 지구 뷰 -->
+            <div class="absolute top-6 right-8 w-28 h-24 sm:w-36 sm:h-28 bg-sky-200 border-4 border-amber-900 rounded-lg overflow-hidden shadow-inner flex flex-col items-center justify-center">
+                <div class="text-[10px] font-bold text-red-600 bg-white/80 w-full text-center py-0.5">⚠️ 바깥 세계 상태</div>
+                <div class="text-2xl mt-1 floating">🌋🔥🌪️</div>
+                <div class="text-[10px] text-slate-700 font-semibold mt-1">지구 위기 심각!</div>
+            </div>
+
+            <!-- 안내 메시지 -->
+            <div id="clickGuide" class="absolute top-28 bg-slate-900/90 text-yellow-300 text-xs sm:text-base font-bold px-4 py-2 rounded-full border border-yellow-500/50 shadow-lg animate-bounce z-20">
+                👇 평범한 미소년 학생 <span class="text-white underline font-bold">"송지우"</span>를 클릭하세요!
+            </div>
+
+            <!-- 송지우 캐릭터 (클릭 전/후 변신 대기) -->
+            <div id="jiwooStudentContainer" class="relative z-20 cursor-pointer group transition-all duration-500 transform hover:scale-105 flex flex-col items-center">
+                
+                <!-- 변신 전/후 미소년 SVG -->
+                <div id="jiwooAvatar" class="w-36 h-48 sm:w-44 sm:h-56 relative flex justify-center items-center">
+                    <!-- 미소년 학생 모드 SVG -->
+                    <svg id="studentSvg" viewBox="0 0 100 130" class="w-full h-full transition-all duration-500">
+                        <rect x="25" y="55" width="50" height="50" rx="10" fill="#1e293b"/>
+                        <path d="M 40 55 L 50 78 L 60 55 Z" fill="#ffffff"/>
+                        <rect x="47" y="60" width="6" height="25" fill="#3b82f6"/>
+                        <path d="M 22 25 Q 50 5 78 25 L 82 50 L 18 50 Z" fill="#1e1b4b"/>
+                        <circle cx="50" cy="36" r="22" fill="#fff7ed"/>
+                        <ellipse cx="40" cy="34" rx="4" ry="5" fill="#1d4ed8"/>
+                        <ellipse cx="60" cy="34" rx="4" ry="5" fill="#1d4ed8"/>
+                        <circle cx="41" cy="32" r="1.5" fill="#ffffff"/>
+                        <circle cx="61" cy="32" r="1.5" fill="#ffffff"/>
+                        <path d="M 34 26 L 45 28" stroke="#1e1b4b" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M 66 26 L 55 28" stroke="#1e1b4b" stroke-width="2" stroke-linecap="round"/>
+                        <ellipse cx="37" cy="40" rx="4" ry="2" fill="#fca5a5" opacity="0.6"/>
+                        <ellipse cx="63" cy="40" rx="4" ry="2" fill="#fca5a5" opacity="0.6"/>
+                        <path d="M 46 44 Q 50 47 54 44" fill="none" stroke="#e11d48" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M 24 25 Q 35 32 42 22 Q 50 35 58 22 Q 65 32 76 25 Q 65 10 50 8 Q 35 10 24 25" fill="#312e81"/>
+                        <rect x="35" y="105" width="10" height="20" fill="#0f172a"/>
+                        <rect x="55" y="105" width="10" height="20" fill="#0f172a"/>
+                    </svg>
+
+                    <!-- 미소년 히어로 모드 SVG (숨겨짐) -->
+                    <svg id="heroSvg" viewBox="0 0 100 130" class="w-full h-full hidden hero-glow transition-all duration-500">
+                        <path d="M 15 45 L 0 115 L 100 115 L 85 45 Z" fill="url(#capeGrad)"/>
+                        <defs>
+                            <linearGradient id="capeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#ef4444"/>
+                                <stop offset="100%" stop-color="#f59e0b"/>
+                            </linearGradient>
+                        </defs>
+                        <rect x="25" y="48" width="50" height="57" rx="10" fill="#0f172a"/>
+                        <path d="M 30 48 L 50 95 L 70 48 Z" fill="#38bdf8"/>
+                        <circle cx="50" cy="70" r="11" fill="#f59e0b"/>
+                        <path d="M 50 61 L 50 79 M 50 70 L 42 77 M 50 70 L 58 77" stroke="#ffffff" stroke-width="2.5"/>
+                        <path d="M 15 20 Q 50 0 85 20 L 88 55 L 12 55 Z" fill="#e2e8f0"/>
+                        <circle cx="50" cy="34" r="21" fill="#fff7ed"/>
+                        <polygon points="36,30 44,32 42,37 35,35" fill="#06b6d4"/>
+                        <polygon points="64,30 56,32 58,37 65,35" fill="#06b6d4"/>
+                        <circle cx="39" cy="33" r="1.5" fill="#ffffff"/>
+                        <circle cx="61" cy="33" r="1.5" fill="#ffffff"/>
+                        <path d="M 33 25 L 45 29" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M 67 25 L 55 29" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M 44 42 Q 50 47 56 42" fill="none" stroke="#be123c" stroke-width="2.5" stroke-linecap="round"/>
+                        <path d="M 20 22 L 32 28 L 38 14 L 50 28 L 62 14 L 68 28 L 80 22 Q 65 5 50 5 Q 35 5 20 22" fill="#f8fafc"/>
+                        <path d="M 35 15 L 42 25 L 48 18 L 55 25 L 63 17" stroke="#cbd5e1" stroke-width="1.5" fill="none"/>
+                        <rect x="34" y="105" width="12" height="22" rx="4" fill="#f59e0b"/>
+                        <rect x="54" y="105" width="12" height="22" rx="4" fill="#f59e0b"/>
+                    </svg>
+                </div>
+
+                <div id="nameTag" class="mt-2 bg-slate-900 text-yellow-400 text-xs sm:text-sm font-bold px-3 py-1 rounded-full border border-yellow-500 shadow">
+                    미래산고 2-5 (7번) 송지우
+                </div>
+            </div>
+
+            <!-- 변신 팝업 버튼 공간 -->
+            <div id="transformMenu" class="absolute bottom-10 z-30 flex flex-col items-center space-y-3 opacity-0 pointer-events-none transition-all duration-500 transform translate-y-6">
+                <div class="bg-slate-900/95 text-white px-6 py-2.5 rounded-2xl border-2 border-yellow-400 text-center shadow-2xl backdrop-blur-md">
+                    <p class="text-xs text-yellow-400 font-bold mb-1">⚡ 세계평화 각성 에너지 충전 완료!</p>
+                    <p class="text-xs sm:text-sm font-jua">"더 이상 무너져가는 지구를 두고 볼 수 없다!"</p>
+                </div>
+                
+                <button id="transformBtn" class="pulse-btn bg-gradient-to-r from-red-600 via-orange-500 to-yellow-500 hover:from-red-500 hover:to-yellow-400 text-white font-jua text-lg sm:text-2xl px-8 py-3.5 rounded-full shadow-2xl border-4 border-yellow-200 transform hover:scale-110 active:scale-95 transition-all flex items-center space-x-3 cursor-pointer">
+                    <i class="fa-solid fa-bolt text-yellow-300 animate-spin"></i>
+                    <span>평화 히어로 지우로 변신!</span>
+                    <i class="fa-solid fa-bolt text-yellow-300 animate-spin"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- PHASE 2: 세계평화 전투 화면 -->
+        <div id="heroBattleScene" class="w-full h-full max-h-[600px] hidden relative flex flex-col items-center justify-center">
+            <!-- 파워업 배너 UI -->
+            <div id="powerupBanner" class="absolute top-3 z-30 bg-yellow-400 text-slate-950 font-jua text-sm sm:text-base px-6 py-1.5 rounded-full border-2 border-white shadow-xl hidden animate-bounce">
+                🔥 완전 짱!!!!!!!!!!!!! 세진 송지우 (자동 폭풍 빔 모드)! [<span id="powerupTimer">5</span>s]
+            </div>
+
+            <!-- 게임 캔버스 -->
+            <canvas id="gameCanvas" class="w-full h-[440px] bg-slate-950 border-2 border-cyan-500/40 relative z-10"></canvas>
+            
+            <!-- 조작 가이드 바 -->
+            <div class="w-full bg-slate-900/90 border border-slate-700 rounded-xl p-2.5 mt-2 flex flex-wrap justify-between items-center text-xs sm:text-sm z-20">
+                <div class="flex items-center space-x-3 mb-1 sm:mb-0">
+                    <span class="text-yellow-400 font-bold"><i class="fa-solid fa-keyboard mr-1"></i> 조작:</span>
+                    <span class="text-slate-300">방향키/WASD (자유 이동)</span>
+                    <span class="text-slate-300">스페이스바 (평화빔 발사)</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <div class="flex items-center space-x-1">
+                        <span class="text-slate-400">남은 세계 문제:</span>
+                        <span id="enemyCountText" class="text-red-400 font-bold font-jua text-base">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 3: 승리 모달 -->
+        <div id="victoryModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-4">
+            <div class="bg-gradient-to-b from-slate-900 to-amber-950 border-4 border-yellow-400 rounded-3xl p-6 max-w-xl w-full text-center shadow-2xl relative floating max-h-[90vh] overflow-y-auto">
+                <div class="text-6xl mb-3">🕊️✨🌍</div>
+                <h2 class="text-3xl font-jua text-yellow-300 mb-2">세계평화 달성 완료!</h2>
+                <p class="text-slate-300 text-xs sm:text-sm mb-4">
+                    미래산업과학고등학교 2학년 5반 (7번) <strong class="text-yellow-400">송지우</strong> 히어로가<br>
+                    지구를 괴롭히던 모든 악의 문제를 정의의 힘으로 정화했습니다!
+                </p>
+
+                <div class="bg-slate-950/60 p-3 rounded-xl border border-yellow-500/30 text-left mb-4 text-xs sm:text-sm space-y-1.5">
+                    <div class="flex justify-between text-emerald-400">
+                        <span>🕊️ 달성 가치:</span>
+                        <span class="font-bold">세계평화 & 정의 수호</span>
+                    </div>
+                    <div class="flex justify-between text-cyan-300">
+                        <span>소속:</span>
+                        <span>미래산업과학고 2학년 5반 7번</span>
+                    </div>
+                    <div class="flex justify-between text-amber-300">
+                        <span>지구 정화율:</span>
+                        <span class="font-bold">100% (완전 평화)</span>
+                    </div>
+                </div>
+
+                <!-- 미래의 세계평화를 위협하는 요소 안내 -->
+                <div class="bg-slate-900/90 border border-red-500/40 rounded-xl p-4 text-left mb-6 space-y-2">
+                    <h3 class="text-amber-400 font-jua text-sm flex items-center">
+                        <i class="fa-solid fa-triangle-exclamation text-red-500 mr-2 animate-pulse"></i>
+                        지우 히어로가 명심해야 할 [ 세계평화 위협 요인 4가지 ]
+                    </h3>
+                    <ul class="text-xs text-slate-300 space-y-1 list-disc pl-4">
+                        <li><strong class="text-red-400">기후변화와 오염:</strong> 생태계 파괴로 인한 기후 자원 분쟁</li>
+                        <li><strong class="text-amber-400">무기 군비 경쟁:</strong> 인류 존속을 위협하는 무력 다툼</li>
+                        <li><strong class="text-purple-400">사이버 테러 및 가짜뉴스:</strong> 신뢰 파괴와 사회적 분열</li>
+                        <li><strong class="text-cyan-400">계층/사회적 불평등:</strong> 갈등과 혐오 심화</li>
+                    </ul>
+                </div>
+
+                <button id="restartBtn" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-jua text-xl py-3 rounded-xl border border-emerald-300 shadow-lg cursor-pointer">
+                    🔄 다시 지구 평화 수호하기
+                </button>
+            </div>
+        </div>
+
+        <!-- PHASE 4: 게임오버 (지구 멸망) 모달 -->
+        <div id="gameOverModal" class="fixed inset-0 bg-red-950/95 backdrop-blur-md z-50 hidden flex flex-col items-center justify-center p-4">
+            <div id="gameOverContent" class="bg-slate-900 border-4 border-red-600 rounded-3xl p-5 sm:p-6 max-w-2xl w-full text-center shadow-2xl relative overflow-hidden">
+                <!-- 원본 제공 멸망한 도시 이미지 대형 연출 (외부 안정 링크 대체 적용) -->
+                <div class="relative w-full h-72 sm:h-96 rounded-2xl overflow-hidden border-4 border-red-600 mb-4 shadow-2xl">
+                    <img id="ruinedEarthImg" 
+                         src="https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1200&q=80" 
+                         alt="Destroyed World" 
+                         class="w-full h-full object-cover filter contrast-125">
+                    <div class="absolute inset-0 bg-gradient-to-t from-red-950/90 via-red-900/20 to-black/50"></div>
+                    <div class="absolute bottom-3 left-0 right-0 text-center flex justify-center items-center">
+                        <span class="bg-red-600 text-white font-jua text-sm sm:text-base px-5 py-2 rounded-full border-2 border-red-300 shadow-2xl animate-bounce">
+                            💥 폭발과 함께 잿더미로 변해버린 지구
+                        </span>
+                    </div>
+                </div>
+
+                <h2 class="text-3xl sm:text-4xl font-jua text-red-500 mb-1 tracking-wider animate-pulse">💥 지구 멸망... (GAME OVER) 💥</h2>
+                <p class="text-slate-300 text-xs sm:text-base mb-4">
+                    미래산고 2-5 7번 송지우 히어로서의 체력이 모두 소진되어 세계가 폭발했습니다!
+                </p>
+
+                <div class="bg-black/70 p-3 rounded-xl border border-red-500/50 text-left mb-4 text-xs sm:text-sm space-y-1">
+                    <div class="flex justify-between text-red-400">
+                        <span>💀 최종 지구 상태:</span>
+                        <span class="font-bold">대폭발 및 완전 황폐화</span>
+                    </div>
+                    <div class="flex justify-between text-yellow-400">
+                        <span>달성 정화율:</span>
+                        <span id="failPeaceScore" class="font-bold">0%</span>
+                    </div>
+                </div>
+
+                <button id="retryBtn" class="w-full bg-gradient-to-r from-red-600 via-orange-600 to-red-600 hover:from-red-500 hover:to-orange-500 text-white font-jua text-xl sm:text-2xl py-3.5 rounded-xl border-2 border-red-400 shadow-2xl cursor-pointer">
+                    🔥 다시 부활하여 지구 구하기!
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer / Ethics Notice -->
+    <footer class="w-full max-w-5xl px-4 py-2 text-center text-xs text-slate-400 z-20 bg-slate-900/60 backdrop-blur rounded-t-xl">
+        <p>💡 <b>윤리적 메시지:</b> 본 게임은 세계평화와 정의의 중요성을 알리기 위해 제작되었습니다. (미래산업과학고 2학년 5반 7번 송지우 전용)</p>
+    </footer>
+
+    <!-- Game Logic Script -->
+    <script>
+        // 전역 게임 상태 관리
+        const gameState = {
+            zoomed: false,
+            transformed: false,
+            peaceScore: 0,
+            canvas: null,
+            ctx: null,
+            animId: null,
+            player: {
+                x: 80,
+                y: 180,
+                speed: 6,
+                width: 45,
+                height: 55,
+                baseWidth: 45,
+                baseHeight: 55,
+                hp: 3,
+                maxHp: 3,
+                invincibleUntil: 0
+            },
+            bullets: [],
+            enemies: [],
+            particles: [],
+            items: [],
+            isPoweredUp: false,
+            powerupEndTime: 0,
+            lastAutoShoot: 0,
+            lastItemSpawn: 0,
+            keys: {},
+            lastSpawn: 0,
+            maxEnemiesToWin: 20,
+            defeatedEnemies: 0
+        };
+
+        // 악의 세력 목록
+        const WORLD_PROBLEMS = [
+            { name: "전쟁과 무력분쟁", icon: "💣", hp: 2 },
+            { name: "기후위기와 오염", icon: "🌋", hp: 2 },
+            { name: "빈곤과 기아", icon: "🥀", hp: 1 },
+            { name: "불평등과 편견", icon: "👾", hp: 2 }
+        ];
+
+        // DOM 요소 참조
+        const classroomScene = document.getElementById('classroomScene');
+        const jiwooStudentContainer = document.getElementById('jiwooStudentContainer');
+        const transformMenu = document.getElementById('transformMenu');
+        const transformBtn = document.getElementById('transformBtn');
+        const studentSvg = document.getElementById('studentSvg');
+        const heroSvg = document.getElementById('heroSvg');
+        const clickGuide = document.getElementById('clickGuide');
+        const heroBattleScene = document.getElementById('heroBattleScene');
+        const peaceScoreEl = document.getElementById('peaceScore');
+        const playerHpDisplay = document.getElementById('playerHpDisplay');
+        const playerTitleEl = document.getElementById('playerTitle');
+        const enemyCountText = document.getElementById('enemyCountText');
+        const victoryModal = document.getElementById('victoryModal');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const restartBtn = document.getElementById('restartBtn');
+        const retryBtn = document.getElementById('retryBtn');
+        const failPeaceScore = document.getElementById('failPeaceScore');
+        const powerupBanner = document.getElementById('powerupBanner');
+        const powerupTimer = document.getElementById('powerupTimer');
+
+        // PHASE 1: 학생 클릭 및 변신
+        jiwooStudentContainer.addEventListener('click', () => {
+            if (gameState.transformed) return;
+
+            if (!gameState.zoomed) {
+                gameState.zoomed = true;
+                jiwooStudentContainer.style.transform = "scale(1.8) translateY(-20px)";
+                clickGuide.classList.add('hidden');
+                transformMenu.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-6');
+                transformMenu.classList.add('opacity-100', 'translate-y-0');
+            }
+        });
+
+        transformBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (gameState.transformed) return;
+            gameState.transformed = true;
+
+            studentSvg.classList.add('hidden');
+            heroSvg.classList.remove('hidden');
+            document.getElementById('nameTag').innerText = "⚡ 평화 히어로 송지우";
+            document.getElementById('nameTag').className = "mt-2 bg-yellow-400 text-slate-900 font-black text-xs sm:text-sm px-4 py-1 rounded-full shadow-lg border-2 border-white animate-pulse";
+
+            const flash = document.createElement('div');
+            flash.className = "fixed inset-0 bg-white z-50 transition-opacity duration-700 opacity-100 pointer-events-none";
+            document.body.appendChild(flash);
+            setTimeout(() => flash.style.opacity = "0", 50);
+            setTimeout(() => flash.remove(), 750);
+
+            setTimeout(() => {
+                classroomScene.classList.add('hidden');
+                heroBattleScene.classList.remove('hidden');
+                playerTitleEl.innerText = "⚡ 히어로 송지우";
+                playerTitleEl.className = "font-extrabold text-yellow-300";
+                initCanvasGame();
+            }, 1200);
+        });
+
+        // PHASE 2: 슈팅 캔버스 초기화
+        function initCanvasGame() {
+            gameState.canvas = document.getElementById('gameCanvas');
+            gameState.ctx = gameState.canvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            window.addEventListener('keydown', e => {
+                gameState.keys[e.key] = true;
+                if (e.code === "Space") {
+                    e.preventDefault();
+                    shootBullet();
+                }
+            });
+            window.addEventListener('keyup', e => {
+                gameState.keys[e.key] = false;
+            });
+
+            setupTouchControls();
+
+            gameState.player.x = 80;
+            gameState.player.y = gameState.canvas.height / 2 - 25;
+            gameState.player.width = gameState.player.baseWidth;
+            gameState.player.height = gameState.player.baseHeight;
+            gameState.player.hp = 3;
+            gameState.player.invincibleUntil = 0;
+            gameState.bullets = [];
+            gameState.enemies = [];
+            gameState.particles = [];
+            gameState.items = [];
+            gameState.isPoweredUp = false;
+            gameState.defeatedEnemies = 0;
+            gameState.peaceScore = 0;
+            powerupBanner.classList.add('hidden');
+            updateUI();
+
+            if (gameState.animId) cancelAnimationFrame(gameState.animId);
+            gameLoop();
+        }
+
+        function resizeCanvas() {
+            if (!gameState.canvas) return;
+            const rect = gameState.canvas.getBoundingClientRect();
+            gameState.canvas.width = rect.width;
+            gameState.canvas.height = rect.height;
+        }
+
+        function shootBullet() {
+            if (!gameState.transformed) return;
+
+            if (gameState.isPoweredUp) {
+                gameState.bullets.push({
+                    x: gameState.player.x + gameState.player.width,
+                    y: gameState.player.y + gameState.player.height / 2 - 20,
+                    width: 70,
+                    height: 40,
+                    speed: 18,
+                    color: '#facc15',
+                    isSuper: true
+                });
+            } else {
+                gameState.bullets.push({
+                    x: gameState.player.x + gameState.player.width,
+                    y: gameState.player.y + gameState.player.height / 2 - 4,
+                    width: 24,
+                    height: 8,
+                    speed: 12,
+                    color: '#38bdf8',
+                    isSuper: false
+                });
+            }
+        }
+
+        function spawnPillItem() {
+            const now = Date.now();
+            if (now - gameState.lastItemSpawn > 6000 && gameState.items.length < 1 && !gameState.isPoweredUp) {
+                gameState.lastItemSpawn = now;
+                gameState.items.push({
+                    x: gameState.canvas.width + 20,
+                    y: Math.random() * (gameState.canvas.height - 80) + 40,
+                    width: 36,
+                    height: 36,
+                    speed: 2.5
+                });
+            }
+        }
+
+        function spawnEnemy() {
+            const now = Date.now();
+            if (now - gameState.lastSpawn > 1200 && (gameState.defeatedEnemies + gameState.enemies.length) < gameState.maxEnemiesToWin) {
+                gameState.lastSpawn = now;
+                const problemType = WORLD_PROBLEMS[Math.floor(Math.random() * WORLD_PROBLEMS.length)];
+                
+                gameState.enemies.push({
+                    x: gameState.canvas.width + 40,
+                    y: Math.random() * (gameState.canvas.height - 60) + 20,
+                    width: 44,
+                    height: 44,
+                    speed: 2 + Math.random() * 2,
+                    type: problemType,
+                    hp: problemType.hp
+                });
+            }
+        }
+
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                gameState.particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    radius: Math.random() * 4 + 2,
+                    color: color,
+                    alpha: 1,
+                    life: 0.04
+                });
+            }
+        }
+
+        function gameLoop() {
+            const ctx = gameState.ctx;
+            const canvas = gameState.canvas;
+            const now = Date.now();
+
+            // 1. 파워업 타이머 및 자동 발사
+            if (gameState.isPoweredUp) {
+                const timeLeft = Math.max(0, Math.ceil((gameState.powerupEndTime - now) / 1000));
+                powerupTimer.innerText = timeLeft;
+
+                if (now - gameState.lastAutoShoot > 120) {
+                    shootBullet();
+                    gameState.lastAutoShoot = now;
+                }
+
+                if (now >= gameState.powerupEndTime) {
+                    gameState.isPoweredUp = false;
+                    gameState.player.width = gameState.player.baseWidth;
+                    gameState.player.height = gameState.player.baseHeight;
+                    powerupBanner.classList.add('hidden');
+                }
+            }
+
+            // 2. 배경 지우기
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1;
+            for(let x = 0; x < canvas.width; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+
+            // 3. 이동 제어 (후진 가능하도록 x >= 0 조절)
+            if (gameState.keys['ArrowUp'] || gameState.keys['w'] || gameState.keys['W']) {
+                gameState.player.y = Math.max(0, gameState.player.y - gameState.player.speed);
+            }
+            if (gameState.keys['ArrowDown'] || gameState.keys['s'] || gameState.keys['S']) {
+                gameState.player.y = Math.min(canvas.height - gameState.player.height, gameState.player.y + gameState.player.speed);
+            }
+            if (gameState.keys['ArrowLeft'] || gameState.keys['a'] || gameState.keys['A']) {
+                gameState.player.x = Math.max(0, gameState.player.x - gameState.player.speed); // 후진 가능!
+            }
+            if (gameState.keys['ArrowRight'] || gameState.keys['d'] || gameState.keys['D']) {
+                gameState.player.x = Math.min(canvas.width - gameState.player.width - 10, gameState.player.x + gameState.player.speed);
+            }
+
+            drawHeroPlayer(ctx, gameState.player.x, gameState.player.y);
+
+            // 4. 짱! 약 아이템 처리
+            spawnPillItem();
+            for (let i = gameState.items.length - 1; i >= 0; i--) {
+                const item = gameState.items[i];
+                item.x -= item.speed;
+
+                ctx.save();
+                ctx.shadowColor = '#facc15';
+                ctx.shadowBlur = 15;
+                ctx.font = '28px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('💊', item.x + item.width/2, item.y + item.height/2);
+                ctx.font = '10px Jua';
+                ctx.fillStyle = '#facc15';
+                ctx.fillText('짱! 약', item.x + item.width/2, item.y + item.height + 8);
+                ctx.restore();
+
+                if (
+                    gameState.player.x < item.x + item.width &&
+                    gameState.player.x + gameState.player.width > item.x &&
+                    gameState.player.y < item.y + item.height &&
+                    gameState.player.y + gameState.player.height > item.y
+                ) {
+                    gameState.isPoweredUp = true;
+                    gameState.powerupEndTime = now + 5000;
+                    gameState.player.width = gameState.player.baseWidth * 1.8;
+                    gameState.player.height = gameState.player.baseHeight * 1.8;
+                    
+                    createParticles(item.x, item.y, '#facc15');
+                    showPopText(gameState.player.x, gameState.player.y, "⚡ 완전 짱!!!!!!!!!!!!! 세짐!");
+                    powerupBanner.classList.remove('hidden');
+                    gameState.items.splice(i, 1);
+                    continue;
+                }
+
+                if (item.x < -item.width) {
+                    gameState.items.splice(i, 1);
+                }
+            }
+
+            // 5. 적 처리
+            spawnEnemy();
+            for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                const enemy = gameState.enemies[i];
+                enemy.x -= enemy.speed;
+
+                // 충돌 검사
+                if (
+                    gameState.player.x < enemy.x + enemy.width &&
+                    gameState.player.x + gameState.player.width > enemy.x &&
+                    gameState.player.y < enemy.y + enemy.height &&
+                    gameState.player.y + gameState.player.height > enemy.y
+                ) {
+                    if (gameState.isPoweredUp) {
+                        createParticles(enemy.x, enemy.y, '#facc15');
+                        gameState.enemies.splice(i, 1);
+                        showPopText(enemy.x, enemy.y, "⚡ 튕겨냄!");
+                        continue;
+                    } else if (now > gameState.player.invincibleUntil) {
+                        gameState.player.hp -= 1;
+                        gameState.player.invincibleUntil = now + 1000;
+                        createParticles(gameState.player.x, gameState.player.y, '#ef4444');
+                        showPopText(gameState.player.x, gameState.player.y, "💔 피 -1!");
+                        updateUI();
+
+                        if (gameState.player.hp <= 0) {
+                            triggerGameOver();
+                            return;
+                        }
+                    }
+                }
+
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+                ctx.beginPath();
+                ctx.arc(enemy.x + enemy.width/2, enemy.y + enemy.height/2, enemy.width/2 + 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.font = '26px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(enemy.type.icon, enemy.x + enemy.width/2, enemy.y + enemy.height/2);
+
+                ctx.font = '10px Noto Sans KR';
+                ctx.fillStyle = '#f8fafc';
+                ctx.fillText(enemy.type.name, enemy.x + enemy.width/2, enemy.y + enemy.height + 10);
+
+                if (enemy.x < -enemy.width) {
+                    enemy.x = canvas.width + 20;
+                }
+            }
+
+            // 6. 총알 처리
+            for (let b = gameState.bullets.length - 1; b >= 0; b--) {
+                const bullet = gameState.bullets[b];
+                bullet.x += bullet.speed;
+
+                ctx.fillStyle = bullet.color;
+                ctx.shadowColor = bullet.isSuper ? '#facc15' : '#38bdf8';
+                ctx.shadowBlur = bullet.isSuper ? 25 : 10;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                ctx.shadowBlur = 0;
+
+                if (bullet.x > canvas.width) {
+                    gameState.bullets.splice(b, 1);
+                    continue;
+                }
+
+                for (let e = gameState.enemies.length - 1; e >= 0; e--) {
+                    const enemy = gameState.enemies[e];
+                    if (
+                        bullet.x < enemy.x + enemy.width &&
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.y < enemy.y + enemy.height &&
+                        bullet.y + bullet.height > enemy.y
+                    ) {
+                        enemy.hp -= bullet.isSuper ? 2 : 1;
+                        createParticles(bullet.x, bullet.y, bullet.isSuper ? '#ef4444' : '#fef08a');
+                        
+                        if (!bullet.isSuper) {
+                            gameState.bullets.splice(b, 1);
+                        }
+
+                        if (enemy.hp <= 0) {
+                            createParticles(enemy.x + enemy.width/2, enemy.y + enemy.height/2, '#4ade80');
+                            showPopText(enemy.x, enemy.y, bullet.isSuper ? "💥 초정화!" : "🕊️ 정화됨!");
+                            
+                            gameState.enemies.splice(e, 1);
+                            gameState.defeatedEnemies++;
+                            
+                            gameState.peaceScore = Math.min(100, Math.round((gameState.defeatedEnemies / gameState.maxEnemiesToWin) * 100));
+                            updateUI();
+
+                            if (gameState.defeatedEnemies >= gameState.maxEnemiesToWin) {
+                                triggerVictory();
+                                return;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // 7. 파티클 그려주기
+            for (let p = gameState.particles.length - 1; p >= 0; p--) {
+                const particle = gameState.particles[p];
+                particle.x += particle.vx;
+                particle.y += particle.vy;
+                particle.alpha -= particle.life;
+
+                if (particle.alpha <= 0) {
+                    gameState.particles.splice(p, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = particle.alpha;
+                    ctx.fillStyle = particle.color;
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            gameState.animId = requestAnimationFrame(gameLoop);
+        }
+
+        // 미소년 히어로 플레이어 캔버스 그리기
+        function drawHeroPlayer(ctx, x, y) {
+            ctx.save();
+            const width = gameState.player.width;
+            const height = gameState.player.height;
+            const isSuper = gameState.isPoweredUp;
+            const isInvincible = Date.now() < gameState.player.invincibleUntil;
+
+            if (isInvincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.globalAlpha = 0.4;
+            }
+
+            const auraRadius = isSuper ? 60 : 35;
+            const gradient = ctx.createRadialGradient(x + width/2, y + height/2, 5, x + width/2, y + height/2, auraRadius);
+            
+            if (isSuper) {
+                gradient.addColorStop(0, 'rgba(250, 204, 21, 0.9)');
+                gradient.addColorStop(0.5, 'rgba(239, 68, 68, 0.6)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            } else {
+                gradient.addColorStop(0, 'rgba(56, 189, 248, 0.8)');
+                gradient.addColorStop(0.6, 'rgba(234, 179, 8, 0.4)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            }
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x + width/2, y + height/2, auraRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.font = isSuper ? '56px sans-serif' : '36px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(isSuper ? '👑🥷⚡' : '✨🥷✨', x + width/2, y + height/2);
+            ctx.restore();
+        }
+
+        function showPopText(x, y, text) {
+            const pop = document.createElement('div');
+            pop.className = 'damage-pop text-emerald-400 font-jua text-lg';
+            pop.innerText = text;
+            pop.style.left = `${x + 20}px`;
+            pop.style.top = `${y + 40}px`;
+            heroBattleScene.appendChild(pop);
+            setTimeout(() => pop.remove(), 1000);
+        }
+
+        function updateUI() {
+            peaceScoreEl.innerText = `${gameState.peaceScore}%`;
+            enemyCountText.innerText = `${gameState.maxEnemiesToWin - gameState.defeatedEnemies}개`;
+            
+            let hearts = "";
+            for (let i = 0; i < gameState.player.maxHp; i++) {
+                if (i < gameState.player.hp) {
+                    hearts += "❤️";
+                } else {
+                    hearts += "🖤";
+                }
+            }
+            playerHpDisplay.innerText = hearts;
+        }
+
+        function setupTouchControls() {
+            // 터치 컨트롤러 코드 제거됨
+        }
+
+        function triggerVictory() {
+            cancelAnimationFrame(gameState.animId);
+            victoryModal.classList.remove('hidden');
+        }
+
+        function triggerGameOver() {
+            cancelAnimationFrame(gameState.animId);
+            failPeaceScore.innerText = `${gameState.peaceScore}%`;
+
+            // 폭발 화면 섬광 연출 생성
+            const flash = document.createElement('div');
+            flash.className = "fixed inset-0 z-50 pointer-events-none flash-effect";
+            document.body.appendChild(flash);
+            setTimeout(() => flash.remove(), 600);
+
+            // 멸망 이미지 대형 모달 폭발 연출 적용
+            const content = document.getElementById('gameOverContent');
+            content.classList.remove('explosion-anim');
+            void content.offsetWidth; // trigger reflow
+            content.classList.add('explosion-anim');
+
+            gameOverModal.classList.remove('hidden');
+        }
+
+        restartBtn.addEventListener('click', () => {
+            victoryModal.classList.add('hidden');
+            restartGame();
+        });
+
+        retryBtn.addEventListener('click', () => {
+            gameOverModal.classList.add('hidden');
+            restartGame();
+        });
+
+        function restartGame() {
+            gameState.defeatedEnemies = 0;
+            gameState.peaceScore = 0;
+            gameState.player.x = 80;
+            gameState.player.y = gameState.canvas.height / 2 - 25;
+            gameState.player.width = gameState.player.baseWidth;
+            gameState.player.height = gameState.player.baseHeight;
+            gameState.player.hp = 3;
+            gameState.player.invincibleUntil = 0;
+            gameState.isPoweredUp = false;
+            gameState.bullets = [];
+            gameState.enemies = [];
+            gameState.items = [];
+            powerupBanner.classList.add('hidden');
+            updateUI();
+            gameLoop();
+        }
+    </script>
+</body>
+</html>
